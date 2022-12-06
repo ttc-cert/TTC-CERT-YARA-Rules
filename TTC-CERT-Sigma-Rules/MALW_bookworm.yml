@@ -1,0 +1,42 @@
+title: 2022 Bookworm malware
+id: f637bbae-6c2a-11ed-a1eb-0242ac120002
+version: 1.0
+first_imported: 2022-11-25
+last_modified: 2022-11-25
+status: RELEASED
+sharing: TLP:GREEN
+author: TTC-CERT
+description: Bookworm malware use MSI file to drop legitimate file and malicious DLL onto filesystem, also the MSI file contain powershell loader and will send the beacon to C2
+category: Malware
+hash: 5149f8fb28a8bf2a67e22de1e781e88b1094a6904e676ff0e74a08278e6e37c2
+logsource:
+   category: process_creation
+   product: windows
+detection: 
+   # msiexec.exe spawn powershell.exe which used to send beacon to C2
+   selection1:
+      ParentImage|endswith: '\MsiExec.exe'
+      Image|endswith: '\powershell.exe'
+      CommandLine|contains|all:
+         - '-propFile'
+         - '-scriptFile'
+         - '-scriptArgsFile'
+         - '-propSep'
+   # msiexec.exe spawn svchost.exe (ligimate gup.exe) which used to side-load libcurl.dll in the same directory
+   selection2:
+      ParentImage|endswith: '\MsiExec.exe'
+      Image|contains: '\Microsoft Assistant\Microsoft Assistant\'
+      CommandLine|contains: '\Microsoft Assistant\Microsoft Assistant\'
+   # Bookworm run by schedule task with SYSTEM privilege
+   selection3:
+      ParentImage|endswith: '\svchost.exe'
+      ParentCommandLine|contains: 'Schedule'
+      Image|contains: '\Microsoft Assistant\Microsoft Assistant\'
+      CommandLine|contains: '\Microsoft Assistant\Microsoft Assistant\'
+   condition: selection1 or selection2 or selection3
+falsepositives: Unknown
+level: high
+tags:
+   - attack.defense.evasion
+   - attack.t1218.007
+   - attack.t1574.002
